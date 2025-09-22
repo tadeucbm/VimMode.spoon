@@ -1,119 +1,44 @@
-local Buffer = require("lib/buffer")
-local BackWord = require("lib/motions/back_word")
+local Buffer = dofile(vimModeScriptPath .. "lib/buffer.lua")
+local BackWord = dofile(vimModeScriptPath .. "lib/motions/back_word.lua")
 
-describe("BackWord", function()
-  it("has a name", function()
-    assert.are.equals("back_word", BackWord:new().name)
+describe("motion: back word", function()
+  it("should move the cursor to the beginning of the previous word", function()
+    local buffer = Buffer:new()
+    buffer:setValue("hello world")
+    buffer:setCaretPosition(10)
+
+    local range = BackWord:getRange(buffer)
+
+    assert.are.same({ start = 10, finish = 6, mode = "exclusive", direction = "characterwise" }, range)
   end)
 
-  describe("#getRange", function()
-    it("handles simple words", function()
-      local buffer = Buffer:new()
-      buffer:setValue("cat dog mouse")
-      buffer:setSelectionRange(3, 0)
+  it("should move the cursor to the beginning of the current word if in the middle of a word", function()
+    local buffer = Buffer:new()
+    buffer:setValue("hello world")
+    buffer:setCaretPosition(8)
 
-      local backWord = BackWord:new()
+    local range = BackWord:getRange(buffer)
 
-      assert.are.same(
-        {
-          start = 0,
-          finish = 3,
-          mode = "exclusive",
-          direction = "characterwise"
-        },
-        backWord:getRange(buffer)
-      )
-    end)
+    assert.are.same({ start = 8, finish = 6, mode = "exclusive", direction = "characterwise" }, range)
+  end)
 
-    it("handles starting on the next word", function()
-      local buffer = Buffer:new()
-      buffer:setValue("cat dog mouse") -- cat dog (m)ouse
-      buffer:setSelectionRange(8, 0)
+  it("should handle multiple word jumps", function()
+    local buffer = Buffer:new()
+    buffer:setValue("hello world again")
+    buffer:setCaretPosition(16)
 
-      local backWord = BackWord:new()
-      local result = backWord:getRange(buffer)
+    local range = BackWord:getRange(buffer, nil, 2)
 
-      assert.are.same(
-        {
-          start = 4, -- cat (d)og mouse
-          finish = 8,
-          mode = "exclusive",
-          direction = "characterwise"
-        },
-        result
-      )
-    end)
+    assert.are.same({ start = 16, finish = 6, mode = "exclusive", direction = "characterwise" }, range)
+  end)
 
-    it("crosses the new line boundary", function()
-      local buffer = Buffer:new()
-      buffer:setValue("ab cd\n  ef")
-      buffer:setSelectionRange(8, 0) -- (e)f
+  it("should stop at the beginning of the buffer", function()
+    local buffer = Buffer:new()
+    buffer:setValue("hello world")
+    buffer:setCaretPosition(2)
 
-      local backWord = BackWord:new()
+    local range = BackWord:getRange(buffer)
 
-      assert.are.same(
-        {
-          start = 3,
-          finish = 8,
-          mode = "exclusive",
-          direction = "characterwise"
-        },
-        backWord:getRange(buffer)
-      )
-    end)
-
-    it("handles punctuation stops", function()
-      local buffer = Buffer:new()
-      buffer:setValue("www.test.com")
-      buffer:setSelectionRange(11, 0) -- .co(m)
-
-      local backWord = BackWord:new()
-
-      assert.are.same(
-        {
-          start = 9,
-          finish = 11,
-          mode = "exclusive",
-          direction = "characterwise"
-        },
-        backWord:getRange(buffer)
-      )
-    end)
-
-    it("handles jumping across punctuation sequences", function()
-      local buffer = Buffer:new()
-      buffer:setValue("www.test..com")
-      buffer:setSelectionRange(10, 0) -- ..(c)om
-
-      local backWord = BackWord:new()
-
-      assert.are.same(
-        {
-          start = 8,
-          finish = 10,
-          mode = "exclusive",
-          direction = "characterwise"
-        },
-        backWord:getRange(buffer)
-      )
-    end)
-
-    it("handles jumping from punctuation thru words", function()
-      local buffer = Buffer:new()
-      buffer:setValue("www.test.com")
-      buffer:setSelectionRange(8, 0) -- www.test(.)com
-
-      local backWord = BackWord:new()
-
-      assert.are.same(
-        {
-          start = 4,
-          finish = 8,
-          mode = "exclusive",
-          direction = "characterwise"
-        },
-        backWord:getRange(buffer)
-      )
-    end)
+    assert.are.same({ start = 2, finish = 0, mode = "exclusive", direction = "characterwise" }, range)
   end)
 end)

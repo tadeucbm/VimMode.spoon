@@ -1,107 +1,61 @@
-local machine = dofile(vimModeScriptPath .. 'lib/utils/statemachine.lua')
 local Motion = dofile(vimModeScriptPath .. "lib/motion.lua")
 local stringUtils = dofile(vimModeScriptPath .. "lib/utils/string_utils.lua")
 local utf8 = dofile(vimModeScriptPath .. "vendor/luautf8.lua")
 
-local isPunctuation = stringUtils.isPunctuation
-local isWhitespace = stringUtils.isWhitespace
-local isPrintableChar = stringUtils.isPrintableChar
-
 local BackWord = Motion:new{ name = 'back_word' }
 
-local parser = machine.create({
-  initial = 'started',
-  events = {
-    { name = 'seenPrintable', from = 'started', to = 'first-printable' },
-    { name = 'seenPunctuation', from = 'started', to = 'first-punctuation' },
-    { name = 'seenWhitespace', from = 'started', to = 'ignore-whitespace' },
+local isPunctuation = stringUtils.isPunctuation
+local isWhitespace = stringUtils.isWhitespace
 
-    { name = 'seenPrintable', from = 'first-printable', to = 'printable-sequence' },
-    { name = 'seenPunctuation', from = 'first-printable', to = 'punctuation-sequence' },
-    { name = 'seenWhitespace', from = 'first-printable', to = 'ignore-whitespace' },
-    { name = 'reset', from = 'first-printable', to = 'started' },
+function BackWord.getRange(_, buffer, _, repeatTimes)
+  repeatTimes = repeatTimes or 1
 
-    { name = 'seenPrintable', from = 'ignore-whitespace', to = 'first-printable' },
-    { name = 'seenPunctuation', from = 'ignore-whitespace', to = 'first-punctuation' },
-    { name = 'seenWhitespace', from = 'ignore-whitespace', to = 'ignore-whitespace' },
-    { name = 'reset', from = 'ignore-whitespace', to = 'started' },
-
-    { name = 'seenPrintable', from = 'printable-sequence', to = 'printable-sequence' },
-    { name = 'seenPunctuation', from = 'printable-sequence', to = 'finished' },
-    { name = 'seenWhitespace', from = 'printable-sequence', to = 'finished' },
-    { name = 'reset', from = 'printable-sequence', to = 'started' },
-
-    { name = 'seenPrintable', from = 'first-punctuation', to = 'first-printable' },
-    { name = 'seenPunctuation', from = 'first-punctuation', to = 'punctuation-sequence' },
-    { name = 'seenWhitespace', from = 'first-punctuation', to = 'ignore-whitespace' },
-    { name = 'reset', from = 'first-punctuation', to = 'started' },
-
-    { name = 'seenPrintable', from = 'punctuation-sequence', to = 'finished' },
-    { name = 'seenPunctuation', from = 'punctuation-sequence', to = 'punctuation-sequence' },
-    { name = 'seenWhitespace', from = 'punctuation-sequence', to = 'finished' },
-    { name = 'reset', from = 'punctuation-sequence', to = 'started' },
-
-    { name = 'reset', from = 'finished', to = 'started' },
-  },
-  callbacks = {
-    -- onstatechange = function(_, event, from, to, char)
-    --   char = char or ""
-
-    --   vimLogger.i(
-    --     "Firing: " .. event .. " from: " .. from .. "to: " .. to ..
-    --     " | for char: " .. char
-    --   )
-    -- end
-  }
-})
-
-function BackWord.getRange(_, buffer)
   local start = buffer:getCaretPosition()
+  local currentPos = start
 
-  local range = {
+  for _ = 1, repeatTimes do
+    currentPos = BackWord.getSingleWordRange(currentPos, buffer)
+  end
+
+  return {
     start = start,
-    finish = start,
+    finish = currentPos,
     mode = 'exclusive',
     direction = 'characterwise'
   }
-
-  local bufferLength = buffer:getLength()
-  local contents = buffer:getValue()
-
-  while range.start >= 0 do
-    local charIndex = range.start + 1 -- lua strings are 1-indexed :(
-    local char = utf8.sub(contents, charIndex, charIndex)
-
-    if char == "\n" then parser:seenWhitespace(char) end
-    if isPunctuation(char) then parser:seenPunctuation(char) end
-    if isWhitespace(char) then parser:seenWhitespace(char) end
-    if isPrintableChar(char) then parser:seenPrintable(char) end
-
-    if parser.current == "finished" then
-      range.start = range.start + 1
-      break
-    end
-
-    if range.start == 0 then
-      break
-    else
-      range.start = range.start - 1
-    end
-  end
-
-  parser:reset()
-
-  return range
 end
 
-function BackWord.getMovements()
-  return {
-    {
-      modifiers = { ' alt' },
-      key = 'left',
-      selection = true
-    }
-  }
+function BackWord.getSingleWordRange(startPos, buffer)
+  local finish = startPos
+  local contents = buffer:getValue()
+
+
+  -- Move back to the first non-whitespace character
+  if finish > 0 then
+    finish = finish - 1
+  end
+  while finish > 0 and isWhitespace(utf8.sub(contents, finish + 1, finish + 1)) do
+    finish = finish - 1
+  end
+
+  local char = utf8.sub(contents, finish + 1, finish + 1)
+  local startedOnPunctuation = isPunctuation(char)
+
+  -- Move back to the beginning of the word
+  while finish > 0 do
+    char = utf8.sub(contents, finish + 1, finish + 1)
+    if isWhitespace(char) then break end
+    if startedOnPunctuation and not isPunctuation(char) then break end
+    if not startedOnPunctuation and isPunctuation(char) then break end
+    finish = finish - 1
+  end
+
+  -- If we are not at the start of the buffer, we need to move one character forward
+  if finish > 0 then
+    finish = finish + 1
+  end
+
+  return finish
 end
 
 return BackWord

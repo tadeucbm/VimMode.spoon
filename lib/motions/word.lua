@@ -21,8 +21,42 @@ local isPrintableChar = stringUtils.isPrintableChar
 --
 
 -- TODO handle more edge cases for :help word
-function Word.getRange(_, buffer, operator)
+function Word.getRange(_, buffer, operator, repeatTimes)
+  repeatTimes = repeatTimes or 1
+  
   local start = buffer:getCaretPosition()
+  local currentPos = start
+  
+  -- Handle special case: "cw" and "cW" are treated like "ce" and "cE" if the
+  -- cursor is on a non-blank. This is because "cw" is interpreted as
+  -- change-word, and a word does not include the following white space.
+  local contents = buffer:getValue()
+  local startingChar = utf8.sub(contents, start + 1, start + 1)
+  
+  if not isWhitespace(startingChar) and operator and operator.name == 'change' then
+    return EndOfWord:new():getRange(buffer, operator, repeatTimes)
+  end
+  
+  -- Apply word motion repeatTimes
+  for i = 1, repeatTimes do
+    local singleWordRange = Word.getSingleWordRange(currentPos, buffer, operator)
+    if not singleWordRange then break end
+    currentPos = singleWordRange.finish
+  end
+  
+  return {
+    start = start,
+    finish = currentPos,
+    mode = 'exclusive',
+    direction = 'characterwise'
+  }
+end
+
+-- Extract single word motion logic into separate function
+function Word.getSingleWordRange(startPos, buffer, operator)
+-- Extract single word motion logic into separate function
+function Word.getSingleWordRange(startPos, buffer, operator)
+  local start = startPos
 
   local range = {
     start = start,
@@ -83,6 +117,7 @@ function Word.getRange(_, buffer, operator)
   end
 
   return range
+end
 end
 
 function Word.getMovements()

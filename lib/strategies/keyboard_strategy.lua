@@ -26,22 +26,26 @@ function KeyboardStrategy:fireMovement()
   local motion = self.vim.commandState.motion
   local operator = self.vim.commandState.operator
   local visualMode = self.vim:isMode('visual')
+  local repeatTimes = self.vim.commandState:getRepeatTimes()
 
   if not motion then return true end
 
   local movements = motion.getMovements()
   if not movements then return false end
 
-  for _, movement in ipairs(movements) do
-    local modifiers = movement.modifiers
+  -- Repeat the entire movement sequence according to repeatTimes
+  for i = 1, repeatTimes do
+    for _, movement in ipairs(movements) do
+      local modifiers = movement.modifiers
 
-    local isSelection = visualMode or (operator and movement.selection)
+      local isSelection = visualMode or (operator and movement.selection)
 
-    if isSelection then
-      modifiers = { "shift", table.unpack(modifiers) }
+      if isSelection then
+        modifiers = { "shift", table.unpack(modifiers) }
+      end
+
+      hs.eventtap.keyStroke(modifiers, movement.key, 0)
     end
-
-    hs.eventtap.keyStroke(modifiers, movement.key, 0)
   end
 
   return true

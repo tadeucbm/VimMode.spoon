@@ -4,7 +4,8 @@ local isWhitespace = stringUtils.isWhitespace
 local utf8 = dofile(vimModeScriptPath .. "vendor/luautf8.lua")
 local BackBigWord = Motion:new{ name = 'back_big_word' }
 
-function BackBigWord.getRange(_, buffer)
+function BackBigWord.getRange(_, buffer, operator, repeatTimes)
+  repeatTimes = repeatTimes or 1
   local start = buffer:getCaretPosition()
 
   local range = {
@@ -14,21 +15,34 @@ function BackBigWord.getRange(_, buffer)
     direction = 'characterwise'
   }
 
-  local contents = buffer:getValue()
+  local success, result = pcall(function()
+    local contents = buffer:getValue()
+    if not contents then
+      return range
+    end
 
-  range.finish = start
+    range.finish = start
 
-  while range.start >= 0 do
-    local charIndex = range.start
-    local char = utf8.sub(contents, charIndex, charIndex)
+    for i = 1, repeatTimes do
+      while range.start >= 0 do
+        local charIndex = range.start
+        local char = utf8.sub(contents, charIndex, charIndex)
 
-    if isWhitespace(char) then break end
-    if range.start == 0 then break end
+        if isWhitespace(char) then break end
+        if range.start == 0 then break end
 
-    range.start = range.start - 1
+        range.start = range.start - 1
+      end
+    end
+
+    return range
+  end)
+
+  if not success then
+    return range
   end
 
-  return range
+  return result
 end
 
 function BackBigWord.getMovements()

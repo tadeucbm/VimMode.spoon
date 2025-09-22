@@ -2,16 +2,31 @@ local Motion = dofile(vimModeScriptPath .. "lib/motion.lua")
 
 local LastLine = Motion:new{ name = 'last_line' }
 
-function LastLine.getRange(_, buffer)
-  local range = buffer:getCurrentLineRange()
-  local start = range.location
+function LastLine.getRange(_, buffer, operator, repeatTimes)
+  repeatTimes = repeatTimes or 1
+  
+  local success, result = pcall(function()
+    local range = buffer:getCurrentLineRange()
+    local start = range.location
 
-  return {
-    start = start,
-    finish = buffer:getLastIndex(),
-    mode = 'exclusive',
-    direction = 'linewise'
-  }
+    return {
+      start = start,
+      finish = buffer:getLastIndex(),
+      mode = 'exclusive',
+      direction = 'linewise'
+    }
+  end)
+
+  if not success then
+    return {
+      start = 0,
+      finish = 0,
+      mode = 'exclusive',
+      direction = 'linewise'
+    }
+  end
+
+  return result
 end
 
 function LastLine.getMovements()

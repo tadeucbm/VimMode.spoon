@@ -21,7 +21,8 @@ local BigWord = Motion:new{ name = 'big_word' }
 
 -- 4. The last non- <newline> in the edit buffer
 
-function BigWord.getRange(_, buffer)
+function BigWord.getRange(_, buffer, operator, repeatTimes)
+  repeatTimes = repeatTimes or 1
   local start = buffer:getCaretPosition()
 
   local range = {
@@ -30,30 +31,47 @@ function BigWord.getRange(_, buffer)
     direction = 'characterwise'
   }
 
-  local seenWhitespace = false
-  local bufferLength = buffer:getLength()
-  local contents = buffer:getValue()
+  local success, result = pcall(function()
+    local bufferLength = buffer:getLength()
+    local contents = buffer:getValue()
+    
+    if not contents then
+      range.finish = start
+      return range
+    end
 
-  range.finish = start
+    range.finish = start
 
-  while range.finish < bufferLength do
-    local charIndex = range.finish + 1 -- lua strings are 1-indexed :(
-    local char = utf8.sub(contents, charIndex, charIndex)
+    for i = 1, repeatTimes do
+      local seenWhitespace = false
+      
+      while range.finish < bufferLength do
+        local charIndex = range.finish + 1 -- lua strings are 1-indexed :(
+        local char = utf8.sub(contents, charIndex, charIndex)
 
-    if seenWhitespace and not isWhitespace(char) then break end
-    if not seenWhitespace and isWhitespace(char) then seenWhitespace = true end
+        if seenWhitespace and not isWhitespace(char) then break end
+        if not seenWhitespace and isWhitespace(char) then seenWhitespace = true end
 
-    range.finish = range.finish + 1
+        range.finish = range.finish + 1
 
-    if char == "\n" then break end
+        if char == "\n" then break end
+      end
+    end
+
+    if range.finish == bufferLength then
+      -- don't go off the right edge of the buffer
+      range.mode = 'inclusive'
+    end
+
+    return range
+  end)
+
+  if not success then
+    range.finish = start
+    return range
   end
 
-  if range.finish == bufferLength then
-    -- don't go off the right edge of the buffer
-    range.mode = 'inclusive'
-  end
-
-  return range
+  return result
 end
 
 function BigWord.getMovements()

@@ -3,12 +3,21 @@ local stringUtils = dofile(vimModeScriptPath .. "lib/utils/string_utils.lua")
 
 local LineEnd = Motion:new{ name = 'line_end' }
 
-function LineEnd.getRange(_, buffer)
-  local lineRange = buffer:getCurrentLineRange()
-  local line = buffer:getCurrentLine()
-  local finish = lineRange:positionEnd()
+function LineEnd.getRange(_, buffer, operator, repeatTimes)
+  repeatTimes = repeatTimes or 1
+  
+  local currentLine = buffer:getCurrentLineNumber()
+  local targetLine = currentLine + repeatTimes - 1
+  
+  -- Get the end of the target line
+  local targetLineRange = buffer:getRangeForLineNumber(targetLine)
+  local finish = targetLineRange:positionEnd()
 
-  if stringUtils.lastChar(line) == "\n" then
+  -- Get the content to check for newline
+  local contents = buffer:getValue()
+  local targetLineText = contents:sub(targetLineRange.location + 1, finish)
+  
+  if stringUtils.lastChar(targetLineText) == "\n" then
     finish = finish - 1
   end
 

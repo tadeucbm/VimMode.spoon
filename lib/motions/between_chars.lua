@@ -10,54 +10,64 @@ function BetweenChars:setSearchChars(beginningChar, endingChar)
   self.endingChar = endingChar
 end
 
-function BetweenChars:getRange(buffer)
+function BetweenChars:getRange(buffer, operator, repeatTimes)
+  repeatTimes = repeatTimes or 1
+  
   if not self.beginningChar or not self.endingChar then
     error("Please setSearchChars(..., ...)")
   end
 
-  local currentChar = buffer:currentChar()
+  local success, result = pcall(function()
+    local currentChar = buffer:currentChar()
 
-  local start = nil
+    local start = nil
 
-  if currentChar == self.beginningChar then
-    start = buffer:getCaretPosition()
+    if currentChar == self.beginningChar then
+      start = buffer:getCaretPosition()
+    end
+
+    if not start then
+      local backwardResult = BackwardSearch
+        :new()
+        :setExtraChar(self.beginningChar)
+        :getRange(buffer, operator, repeatTimes)
+
+      start = backwardResult and backwardResult.start
+    end
+
+    if not start then return nil end
+
+    -- Find the finish position.
+    local finish = nil
+
+    if currentChar == self.endingChar then
+      finish = buffer:getCaretPosition()
+    end
+
+    if not finish then
+      local forwardResult = ForwardSearch
+        :new()
+        :setExtraChar(self.endingChar)
+        :getRange(buffer, operator, repeatTimes)
+
+      finish = forwardResult and forwardResult.finish
+    end
+
+    if not finish then return nil end
+
+    return {
+      start = start + 1,
+      finish = finish - 1,
+      mode = "inclusive",
+      direction = "characterwise",
+    }
+  end)
+
+  if not success then
+    return nil
   end
 
-  if not start then
-    local backwardResult = BackwardSearch
-      :new()
-      :setExtraChar(self.beginningChar)
-      :getRange(buffer)
-
-    start = backwardResult and backwardResult.start
-  end
-
-  if not start then return nil end
-
-  -- Find the finish position.
-  local finish = nil
-
-  if currentChar == self.endingChar then
-    finish = buffer:getCaretPosition()
-  end
-
-  if not finish then
-    local forwardResult = ForwardSearch
-      :new()
-      :setExtraChar(self.endingChar)
-      :getRange(buffer)
-
-    finish = forwardResult and forwardResult.finish
-  end
-
-  if not finish then return nil end
-
-  return {
-    start = start + 1,
-    finish = finish - 1,
-    mode = "inclusive",
-    direction = "characterwise",
-  }
+  return result
 end
 
 function BetweenChars:getMovements()

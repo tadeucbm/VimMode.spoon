@@ -2,7 +2,7 @@ local Motion = dofile(vimModeScriptPath .. "lib/motion.lua")
 
 local Noop = Motion:new{ name = 'noop' }
 
-function Noop.getRange(_, _)
+function Noop.getRange(_, _, _, _)
   return nil
 end
 

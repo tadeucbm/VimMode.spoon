@@ -1,3 +1,10 @@
+package.path = "./vendor/?.lua;./vendor/?/init.lua;" .. package.path
+package.cpath = "./vendor/?.so;" .. package.cpath
+
+hs = {
+  execute = function() return "arm\n" end
+}
+
 inspect = dofile("lib/utils/inspect.lua")
 
 vimModeScriptPath = ""

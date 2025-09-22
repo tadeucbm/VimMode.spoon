@@ -157,7 +157,7 @@ Advanced Mode gives.
 - [x] UTF-8 support
 - [x] `^d` - page down
 - [x] `^u` - page down
-- [ ] support prefixing commands with numbers to repeat them (e.g. `2dw`)
+- [x] support prefixing commands with numbers to repeat them (e.g. `2dw`)
 
 ## Configuration
 

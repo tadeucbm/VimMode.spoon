@@ -25,7 +25,7 @@ function Motion:getMovements()
   error("Please implement getMovements()")
 end
 
-function Motion:getRange(buffer)
+function Motion:getRange(buffer, operator, repeatTimes)
   error("Please implement getRange()")
 end
 
