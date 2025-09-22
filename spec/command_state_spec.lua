@@ -1,11 +1,5 @@
--- Set up path for dofile
-local vimModeScriptPath = "./"
-
--- Mock the numberUtils dependency
-local numberUtils = require("lib/utils/number_utils")
-
 -- Load the module under test
-local CommandState = dofile("lib/command_state.lua")
+local CommandState = require("lib/command_state")
 
 describe("CommandState", function()
   local commandState
