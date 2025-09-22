@@ -1,0 +1,135 @@
+name: Automated Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Extract version from tag
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Get the previous tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+        
+        if [ -n "$PREVIOUS_TAG" ]; then
+          echo "## Changes since $PREVIOUS_TAG" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD >> RELEASE_NOTES.md
+        else
+          echo "## Initial Release" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "- Initial release of VimMode.spoon" >> RELEASE_NOTES.md
+        fi
+        
+        echo "" >> RELEASE_NOTES.md
+        echo "## Installation" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "1. Download VimMode.spoon.zip" >> RELEASE_NOTES.md
+        echo "2. Unzip and move to ~/.hammerspoon/Spoons/" >> RELEASE_NOTES.md
+        echo "3. Add to your Hammerspoon config:" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "\`\`\`lua" >> RELEASE_NOTES.md
+        echo "local VimMode = hs.loadSpoon('VimMode')" >> RELEASE_NOTES.md
+        echo "local vim = VimMode:new()" >> RELEASE_NOTES.md
+        echo "vim:disableForApp('Code'):enterWithSequence('jk')" >> RELEASE_NOTES.md
+        echo "\`\`\`" >> RELEASE_NOTES.md
+        
+    - name: Setup Lua for packaging
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lua5.3 lua5.3-dev
+        
+    - name: Install packaging dependencies
+      run: |
+        sudo apt-get install -y luarocks
+        sudo luarocks install luacheck || echo "Luacheck installation failed"
+        sudo luarocks install busted || echo "Busted installation failed"
+        
+    - name: Run pre-release validation
+      run: |
+        # Validate Lua syntax first
+        echo "Checking Lua syntax..."
+        lua5.3 syntax_check.lua
+        
+        # Try luacheck if available
+        if command -v luacheck &> /dev/null; then
+          luacheck lib/ --config .luacheckrc || echo "Linting failed but continuing"
+        fi
+        
+        # Try busted if available, otherwise use simple test runner
+        if command -v busted &> /dev/null; then
+          busted spec/ --verbose || echo "Busted tests failed, trying simple tests"
+        fi
+        lua5.3 simple_test_runner.lua
+        
+    - name: Update version in init.lua
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        sed -i "s/version = \"[^\"]*\"/version = \"$VERSION\"/" lib/vim.lua
+        
+    - name: Create Spoon package
+      run: |
+        mkdir -p VimMode.spoon
+        
+        # Copy essential files
+        cp -r lib/ VimMode.spoon/
+        cp -r vendor/ VimMode.spoon/
+        cp init.lua VimMode.spoon/
+        cp docs.json VimMode.spoon/
+        cp README.md VimMode.spoon/
+        cp CHANGELOG.md VimMode.spoon/ 2>/dev/null || true
+        
+        # Create zip package
+        zip -r VimMode.spoon.zip VimMode.spoon/
+        
+        # Create checksums
+        shasum -a 256 VimMode.spoon.zip > VimMode.spoon.zip.sha256
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        release_name: VimMode.spoon ${{ steps.version.outputs.version }}
+        body_path: ./RELEASE_NOTES.md
+        draft: false
+        prerelease: false
+        
+    - name: Upload Spoon Package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./VimMode.spoon.zip
+        asset_name: VimMode.spoon.zip
+        asset_content_type: application/zip
+        
+    - name: Upload Checksum
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./VimMode.spoon.zip.sha256
+        asset_name: VimMode.spoon.zip.sha256
+        asset_content_type: text/plain

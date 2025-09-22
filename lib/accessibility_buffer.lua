@@ -30,6 +30,10 @@ local bannedApps = {
 }
 
 function AccessibilityBuffer:new(vim)
+  if not vim then
+    error("AccessibilityBuffer:new() requires a vim instance")
+  end
+  
   local buffer = {}
 
   setmetatable(buffer, self)

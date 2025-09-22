@@ -1,0 +1,37 @@
+# Pre-commit hooks for VimMode.spoon
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+
+  - repo: local
+    hooks:
+      - id: luacheck
+        name: luacheck
+        entry: luacheck
+        language: system
+        files: \.lua$
+        args: [--config, .luacheckrc]
+        
+      - id: lua-format
+        name: lua-format
+        entry: lua-format
+        language: system
+        files: \.lua$
+        args: [--indent-width=2, --column-limit=80, --in-place]
+        
+      - id: unit-tests
+        name: unit-tests
+        entry: busted
+        language: system
+        files: \.lua$
+        args: [spec/]
+        pass_filenames: false
