@@ -54,8 +54,6 @@ end
 
 -- Extract single word motion logic into separate function
 function Word.getSingleWordRange(startPos, buffer, operator)
--- Extract single word motion logic into separate function
-function Word.getSingleWordRange(startPos, buffer, operator)
   local start = startPos
 
   local range = {

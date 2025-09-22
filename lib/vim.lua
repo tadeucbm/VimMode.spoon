@@ -364,8 +364,31 @@ function VimMode:fireCommandState()
     return strategy:isValid()
   end)
 
-  strategy:fire()
-  self.commandState:resetCharsEntered()
+  if not strategy then
+    vimLogger.e("No valid strategy found for command execution")
+    return {
+      mode = self.mode,
+      transition = 'normal',
+      hadMotion = false,
+      hadOperator = false
+    }
+  end
+
+  local success, result = pcall(function()
+    strategy:fire()
+    self.commandState:resetCharsEntered()
+  end)
+
+  if not success then
+    vimLogger.e("Strategy execution failed: " .. tostring(result))
+    self.commandState:resetCharsEntered()
+    return {
+      mode = self.mode,
+      transition = 'normal',
+      hadMotion = not not motion,
+      hadOperator = not not operator
+    }
+  end
 
   local transition
 

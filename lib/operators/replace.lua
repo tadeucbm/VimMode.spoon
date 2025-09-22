@@ -45,8 +45,18 @@ function Replace:getModifiedBuffer(buffer, rangeStart, rangeFinish)
 end
 
 function Replace:getKeys()
-  -- TODO support in bootleg mode
-  return nil
+  -- Support fallback mode by selecting and typing replacement
+  local replaceChar = self:getExtraChar()
+  if not replaceChar then
+    return nil
+  end
+  
+  return {
+    {
+      modifiers = {},
+      key = replaceChar
+    }
+  }
 end
 
 return Replace
