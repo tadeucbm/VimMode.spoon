@@ -326,21 +326,45 @@ vim
 
 ## Testing
 
-There are unit tests and integration tests!
+VimMode.spoon has comprehensive testing with both unit tests and integration tests.
 
-To run the unit tests:
+### Unit Tests (Lua)
+
+Unit tests validate core functionality and can run in any environment:
 
 ```sh
 cd VimMode.spoon
 
+# Install dependencies (if available)
 bin/dev-setup
+
+# Run Lua unit tests
 busted spec
+
+# Or use the simple test runner (no external dependencies)
+lua5.3 simple_test_runner.lua
 ```
 
-To run the integration tests, there is a bit of setup, which you can read
-about in the [`docs/Integration_Tests.md`](./docs/Integration_Tests.md) document. However, once you setup,
-it should just be:
+### Integration Tests (Ruby + Browser Automation)
+
+Integration tests verify end-to-end functionality but require local setup with accessibility permissions:
 
 ```sh
+# Check if your environment is ready
+./integration_test_validator.rb
+
+# Run integration tests (after setup)
 bundle exec rspec spec
 ```
+
+**Note**: Integration tests require manual setup and **cannot run in CI/CD** due to accessibility permission requirements. See [`docs/Integration_Tests.md`](./docs/Integration_Tests.md) for detailed setup instructions.
+
+### CI/CD Testing
+
+The CI pipeline runs:
+- **Lua syntax validation** for all core modules
+- **Unit tests** for configuration and command state functionality  
+- **Ruby syntax validation** for integration test files
+- **Dependency checks** to ensure test environment requirements are met
+
+Full integration testing must be performed locally by developers before merging changes.

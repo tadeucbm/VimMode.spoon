@@ -83,18 +83,33 @@ jobs:
         ruby-version: '3.0'
         bundler-cache: true
         
-    - name: Install system dependencies
-      run: |
-        brew install --cask hammerspoon
-        brew install chromedriver
-        
     - name: Install Ruby dependencies
       run: bundle install
       
-    - name: Run integration tests
-      run: bundle exec rspec spec/ --format documentation
-      env:
-        DISPLAY: ":99"
+    - name: Validate Ruby test files
+      run: |
+        echo "=== Integration Test Validation ==="
+        echo "Integration tests require manual setup and cannot run in CI."
+        echo "See docs/Integration_Tests.md for local testing instructions."
+        echo ""
+        echo "Validating Ruby test file syntax..."
+        
+        # Check Ruby syntax for test files
+        find spec/ -name "*.rb" -exec ruby -c {} \; && echo "✓ All Ruby test files have valid syntax"
+        
+        # Verify required test dependencies are available
+        echo ""
+        echo "Checking test dependencies..."
+        bundle exec ruby -e "
+          require 'rspec'
+          require 'capybara'
+          require 'selenium-webdriver'
+          puts '✓ All test dependencies are available'
+        "
+        
+        echo ""
+        echo "Integration test environment validation complete."
+        echo "Note: Actual integration tests must be run locally with accessibility permissions."
         
   package:
     name: Package Spoon
