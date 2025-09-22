@@ -1,0 +1,53 @@
+# VimMode.spoon .gitignore
+
+# Lua coverage reports
+luacov.*.out
+luacov.*.in
+
+# Testing artifacts
+.busted
+*.rockspec
+
+# Documentation generation
+docs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+
+# Package files
+*.zip
+*.tar.gz
+*.tar.bz2
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+
+# Node.js (if using any JS tools)
+node_modules/
+npm-debug.log*
+
+# Ruby (for integration tests)
+.bundle/
+vendor/bundle/
+
+# Local development
+.env
+.env.local

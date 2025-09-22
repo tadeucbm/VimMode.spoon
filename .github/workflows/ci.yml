@@ -1,0 +1,153 @@
+name: VimMode.spoon CI/CD
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  release:
+    types: [published]
+
+jobs:
+  lint:
+    name: Lua Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Lua
+      uses: leafo/gh-actions-lua@v10
+      with:
+        luaVersion: "5.3"
+    
+    - name: Setup Luarocks
+      uses: leafo/gh-actions-luarocks@v4
+    
+    - name: Install luacheck
+      run: luarocks install luacheck
+      
+    - name: Run luacheck
+      run: luacheck lib/ --config .luacheckrc
+      
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Lua
+      uses: leafo/gh-actions-lua@v10
+      with:
+        luaVersion: "5.3"
+    
+    - name: Setup Luarocks
+      uses: leafo/gh-actions-luarocks@v4
+    
+    - name: Install test dependencies
+      run: |
+        luarocks install busted
+        luarocks install luacov
+        luarocks install luautf8
+        
+    - name: Run unit tests
+      run: busted spec/ --coverage
+      
+    - name: Generate coverage report
+      run: luacov
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./luacov.report.out
+        
+  integration-tests:
+    name: Integration Tests
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0'
+        bundler-cache: true
+        
+    - name: Install system dependencies
+      run: |
+        brew install --cask hammerspoon
+        brew install chromedriver
+        
+    - name: Install Ruby dependencies
+      run: bundle install
+      
+    - name: Run integration tests
+      run: bundle exec rspec spec/ --format documentation
+      env:
+        DISPLAY: ":99"
+        
+  package:
+    name: Package Spoon
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    if: github.event_name == 'release'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create Spoon package
+      run: |
+        # Create a clean package directory
+        mkdir -p VimMode.spoon
+        
+        # Copy essential files
+        cp -r lib/ VimMode.spoon/
+        cp -r vendor/ VimMode.spoon/
+        cp init.lua VimMode.spoon/
+        cp docs.json VimMode.spoon/
+        
+        # Create zip package
+        zip -r VimMode.spoon.zip VimMode.spoon/
+        
+    - name: Upload package to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./VimMode.spoon.zip
+        asset_name: VimMode.spoon.zip
+        asset_content_type: application/zip
+        
+  docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    if: github.ref == 'refs/heads/master'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Lua
+      uses: leafo/gh-actions-lua@v10
+      with:
+        luaVersion: "5.3"
+    
+    - name: Setup Luarocks
+      uses: leafo/gh-actions-luarocks@v4
+    
+    - name: Install documentation tools
+      run: luarocks install ldoc
+      
+    - name: Generate documentation
+      run: |
+        ldoc --dir docs --title "VimMode.spoon Documentation" lib/
+        
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/master'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
