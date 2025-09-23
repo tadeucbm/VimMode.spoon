@@ -116,7 +116,6 @@ function Word.getSingleWordRange(startPos, buffer, operator)
 
   return range
 end
-end
 
 function Word.getMovements()
   return {
