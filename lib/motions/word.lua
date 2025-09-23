@@ -1,7 +1,7 @@
-local Motion = dofile(vimModeScriptPath .. "lib/motion.lua")
-local EndOfWord = dofile(vimModeScriptPath .. "lib/motions/end_of_word.lua")
-local stringUtils = dofile(vimModeScriptPath .. "lib/utils/string_utils.lua")
-local utf8 = dofile(vimModeScriptPath .. "vendor/luautf8.lua")
+local Motion = dofile((vimModeScriptPath or "") .. "lib/motion.lua")
+local EndOfWord = dofile((vimModeScriptPath or "") .. "lib/motions/end_of_word.lua")
+local stringUtils = dofile((vimModeScriptPath or "") .. "lib/utils/string_utils.lua")
+local utf8 = dofile((vimModeScriptPath or "") .. "vendor/luautf8.lua")
 
 local Word = Motion:new{ name = 'word' }
 
@@ -26,6 +26,7 @@ function Word.getRange(_, buffer, operator, repeatTimes)
   
   local start = buffer:getCaretPosition()
   local currentPos = start
+  local resultMode = 'exclusive' -- default mode
   
   -- Handle special case: "cw" and "cW" are treated like "ce" and "cE" if the
   -- cursor is on a non-blank. This is because "cw" is interpreted as
@@ -42,12 +43,13 @@ function Word.getRange(_, buffer, operator, repeatTimes)
     local singleWordRange = Word.getSingleWordRange(currentPos, buffer, operator)
     if not singleWordRange then break end
     currentPos = singleWordRange.finish
+    resultMode = singleWordRange.mode -- use mode from last single word range
   end
   
   return {
     start = start,
     finish = currentPos,
-    mode = 'exclusive',
+    mode = resultMode,
     direction = 'characterwise'
   }
 end
